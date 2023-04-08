@@ -45,7 +45,9 @@ class TgBot:
     token: str
     admins: dict
     max_admins_count: int
+    page_size_stop_word: int
     max_stop_word_count: int
+    remove_joins: bool
     model_path: str
     path_tokenizer: str
     group_reports: int  # todo: удалить или
@@ -62,7 +64,9 @@ config = Config(
         token=env('BOT_TOKEN'),
         admins={},
         max_admins_count=50,
+        page_size_stop_word=10,
         max_stop_word_count=100,
+        remove_joins=True,
         group_reports=-807049020,
         model_path=env('MODEL_PATH'),
         path_tokenizer=env('PATH_TOKENIZER')

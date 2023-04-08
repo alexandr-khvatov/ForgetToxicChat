@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 
 from aiogram import Router, Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -18,13 +19,13 @@ from filters.chat_type import ChatTypeFilter
 from filters.is_admin import IsChatAdmin
 
 
-class ActionBadWord:
+class ActionBadWord(str, Enum):
     add = 'add'
     show = 'show'
     rm = 'rm'
 
 
-class BadWordCB(CallbackData, prefix="asw"):
+class BadWordCB(CallbackData, prefix='_bw'):
     action: ActionBadWord
     chat_id: int
 

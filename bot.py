@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from config.config import config
 from handlers import admin_handlers, moderator_handlers, update_event_admins_handlers, admin_bot_setup_handlers, \
-    admin_add_badword_handlers
+    admin_add_badword_handlers, admin_show_badword_handlers, group_join
 from keyboards.main_menu import set_main_menu
 from middleware.db import DbSessionMiddleware
 
@@ -43,9 +43,11 @@ async def main():
     dp.chat_member.middleware(DbSessionMiddleware(db_pool))
 
     # Register handlers
+    dp.include_router(admin_show_badword_handlers.router)
     dp.include_router(admin_add_badword_handlers.router)
     dp.include_router(admin_bot_setup_handlers.router)
     dp.include_router(admin_handlers.router)
+    dp.include_router(group_join.router)
     dp.include_router(update_event_admins_handlers.router)
     dp.include_router(moderator_handlers.router)
 

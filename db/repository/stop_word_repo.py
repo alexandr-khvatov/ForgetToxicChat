@@ -28,15 +28,14 @@ class StopWordRepo(SQLAlchemyRepo):
             .order_by(StopWord.created_at) \
             .limit(limit) \
             .offset(offset)
-        items = await self.session.scalars(stmt)
+        _ = await self.session.execute(stmt)
+        items = _.scalars().all()
         return count, items
 
     async def get_counts(self, chat_id):
         stmt = select(func.count()).select_from(
             select(StopWord.chat_tg_id).where(StopWord.chat_tg_id == chat_id).subquery())
-
         _ = await self.session.execute(stmt)
-
         return _.scalar_one()
 
     async def add_all(self, chat_id, bad_words):

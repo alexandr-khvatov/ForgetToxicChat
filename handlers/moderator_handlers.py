@@ -1,23 +1,23 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.types import Message
-from filters.chat_type import ChatTypeFilter
 
-from services.toxicity.BertToxicityClassifier import BertToxicityClassifier, get_model
+from filters.chat_type import ChatTypeFilter
+from services.toxicity.BertToxicityClassifier import BertToxicityClassifier
 
 router: Router = Router()
 
 
-@router.message(ChatTypeFilter(chat_type=["group", "supergroup"]))
+@router.message(ChatTypeFilter(chat_type=["group", "supergroup"]), F.text)
 async def process_moderator(message: Message, model: BertToxicityClassifier):
     # model: BertToxicityClassifier = get_model()
-
+    print(message)
     confidence, probs, predicted_class, label = model.predict(message.text)
     if predicted_class == 1:
         await message.delete()
     # send debug message
     msg = f'''
     confidence: {confidence:.2f},
-    probs: {list(map(lambda x: format(x, '.2f'),probs))},
+    probs: {list(map(lambda x: format(x, '.2f'), probs))},
     label: {predicted_class} = {label}
     '''
     await message.answer(text=msg)
