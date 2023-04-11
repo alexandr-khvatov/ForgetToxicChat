@@ -41,7 +41,7 @@ def make_kb_bot_settings(chat: Chat, width: int = 3) -> InlineKeyboardMarkup:
         callback_data=ChatSettings(action=Action.warning_minus, chat_id=chat_id).pack())
 
     show_mute_time_btn: InlineKeyboardButton = InlineKeyboardButton(
-        text=f"Время:{chat.mute_time}",
+        text=f"Время:{int(chat.mute_time / 60)}",
         callback_data='ignore')
 
     mute_btn_plus: InlineKeyboardButton = InlineKeyboardButton(

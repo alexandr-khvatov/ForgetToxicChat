@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import func
+from sqlalchemy import func, delete, desc
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -25,7 +25,7 @@ class StopWordRepo(SQLAlchemyRepo):
             select(StopWord.chat_tg_id).where(StopWord.chat_tg_id == chat_id).subquery()))
         stmt = select(StopWord.stop_word) \
             .where(StopWord.chat_tg_id == chat_id) \
-            .order_by(StopWord.created_at) \
+            .order_by(desc(StopWord.created_at)) \
             .limit(limit) \
             .offset(offset)
         _ = await self.session.execute(stmt)
@@ -54,3 +54,9 @@ class StopWordRepo(SQLAlchemyRepo):
             logger.error(msg_err)
             await self.session.rollback()
             raise
+
+    async def delete(self, chat_id, bad_word):
+        stmt = delete(StopWord).where(StopWord.chat_tg_id == chat_id).where(StopWord.stop_word == bad_word)
+        await self.session.execute(stmt)
+        await self.session.commit()
+        logger.debug('delete_stop_word: { %s } for chat with id: { %s }', bad_word, chat_id)

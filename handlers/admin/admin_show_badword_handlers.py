@@ -13,7 +13,7 @@ from db.repository.chat_repo import ChatRepo
 from db.repository.stop_word_repo import StopWordRepo
 from filters.chat_type import ChatTypeFilter
 from filters.is_admin import IsChatAdmin
-from keyboards.bad_word_kb import create_edit_bw_kb, PaginationBadWordCB, ActionPaginationBW
+from keyboards.bad_word_kb import create_edit_bw_kb, PaginationBadWordCB, ActionPaginationBW, BwCB, ActionBW
 
 router: Router = Router()
 
@@ -87,3 +87,22 @@ async def previous_page_press_btn(callback: CallbackQuery, callback_data: Pagina
 
 def get_total_page(total_counts: int, page_size: int = config.tg_bot.page_size_stop_word):
     return math.ceil(total_counts / page_size)
+
+
+@router.callback_query(BwCB.filter(F.action == ActionBW.delete))
+async def delete_stop_word_press_btn(callback: CallbackQuery, callback_data: BwCB,
+                                     sw_repo: StopWordRepo):
+    page_size = config.tg_bot.page_size_stop_word
+    chat_id = callback_data.chat_id
+    bad_word = callback_data.bad_word
+    await sw_repo.delete(chat_id=chat_id, bad_word=bad_word)
+    await callback.answer(f'Стоп-слово:{bad_word} удалено!')
+    current_page = callback_data.current_page - 1
+    offset = current_page * page_size
+    total_counts, next_page_words = await sw_repo.get_all(chat_id, offset=offset, limit=page_size)
+    total_page = get_total_page(total_counts=total_counts)
+    ikb = create_edit_bw_kb(chat_id=chat_id,
+                            bad_words=next_page_words,
+                            current_page=current_page,
+                            total_page=total_page)
+    await callback.message.edit_text(text=callback.message.text, reply_markup=ikb)

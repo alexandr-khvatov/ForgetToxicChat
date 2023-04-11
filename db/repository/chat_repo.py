@@ -22,16 +22,14 @@ class ChatRepo(SQLAlchemyRepo):
         stmt = select(Chat).where(Chat.chat_tg_id == chat_id)
         # _ = await self.session.execute(stmt)
         _ = await self.session.execute(stmt)
-        c = _.scalars().first()
-        if c:
-            print('==============')
-            print(c.mode)
-            print('==============')
-            return c
+        chat = _.scalars().first()
+        if chat:
+            logger.debug('chat with id: {%s} mode {%s} is activ', chat_id, chat.mode)
+            return chat
         else:
             self.session.add(Chat(chat_tg_id=chat_id))
             await self.session.commit()
-            return self.find_chat_settings(chat_id=chat_id)
+            return await self.find_chat_settings(chat_id=chat_id)
 
     async def add(self, chat: Chat):
         try:
@@ -53,11 +51,11 @@ class ChatRepo(SQLAlchemyRepo):
             if mode:
                 chat.mode = mode
             if mute_action == Action.mute_minus:
-                if current_mute_time > 5:
-                    chat.mute_time = current_mute_time - 5
+                if current_mute_time > 300:
+                    chat.mute_time = current_mute_time - 300
             if mute_action == Action.mute_plus:
-                if current_mute_time < 50:
-                    chat.mute_time = current_mute_time + 5
+                if current_mute_time < 3000:
+                    chat.mute_time = current_mute_time + 300
             if warning_action == Action.warning_minus:
                 if current_num_warnings > 1:
                     chat.num_warnings = current_num_warnings - 1

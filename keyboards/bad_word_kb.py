@@ -18,6 +18,7 @@ class BwCB(CallbackData, prefix='bwe'):
     action: ActionBW
     chat_id: int
     bad_word: str
+    current_page: int
 
 
 class ActionPaginationBW(str, Enum):
@@ -38,10 +39,13 @@ def create_edit_bw_kb(chat_id, bad_words: list, current_page=1, total_page=100) 
     # Наполняем клавиатуру кнопками-закладками в порядке возрастания
     for b_word in bad_words:
         print(f'b_word:{b_word}')
-        print(BwCB(action=ActionBW.delete, chat_id=chat_id, bad_word=str(b_word)).pack())
+        print(BwCB(action=ActionBW.delete, chat_id=chat_id, bad_word=str(b_word), current_page=current_page).pack())
         kb_builder.row(InlineKeyboardButton(
             text=f'{LEXICON["del"]} {b_word}',
-            callback_data=BwCB(action=ActionBW.delete, chat_id=chat_id, bad_word=str(b_word)).pack()))
+            callback_data=BwCB(action=ActionBW.delete,
+                               chat_id=chat_id,
+                               bad_word=b_word,
+                               current_page=current_page).pack()))
         # Добавляем в конец клавиатуры кнопку "Отменить"
     kb_builder.row(InlineKeyboardButton(
         text=LEXICON['cancel'],

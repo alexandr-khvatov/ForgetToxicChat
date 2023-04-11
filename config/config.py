@@ -47,6 +47,7 @@ class TgBot:
     max_admins_count: int
     page_size_stop_word: int
     max_stop_word_count: int
+    ban_period: int
     remove_joins: bool
     model_path: str
     path_tokenizer: str
@@ -66,6 +67,7 @@ config = Config(
         max_admins_count=50,
         page_size_stop_word=10,
         max_stop_word_count=100,
+        ban_period=3600,
         remove_joins=True,
         group_reports=-807049020,
         model_path=env('MODEL_PATH'),

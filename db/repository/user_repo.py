@@ -2,6 +2,7 @@ import logging
 
 from pydantic import parse_obj_as
 from sqlalchemy import select, and_, exc, delete
+from sqlalchemy.exc import SQLAlchemyError
 
 from config.config import config
 from db.models.userchat import UserChat
@@ -11,6 +12,19 @@ logger = logging.getLogger(__name__)
 
 
 class UserRepo(SQLAlchemyRepo):
+
+    async def find_user(self, user_id, chat_id):
+        stmt = select(UserChat) \
+            .where(UserChat.user_tg_id == user_id) \
+            .where(UserChat.chat_tg_id == chat_id)
+        _ = await self.session.execute(stmt)
+        user = _.scalars().first()
+        if user:
+            return user
+        else:
+            self.session.add(UserChat(user_tg_id=user_id, chat_tg_id=chat_id))
+            await self.session.commit()
+            return await self.find_user(user_id=user_id, chat_id=chat_id)
 
     async def find_admin_ids_by_chat_id(self, chat_id):
         stmt = select(UserChat.user_tg_id) \
@@ -27,6 +41,23 @@ class UserRepo(SQLAlchemyRepo):
                 UserChat.isAdmin == True, ))
         res = (await self.session.execute(stmt)).first()
         return res is not None
+
+    async def update_or_insert(self, user: UserChat):
+        stmt = select(UserChat) \
+            .where(UserChat.user_tg_id == user.user_tg_id) \
+            .where(UserChat.chat_tg_id == user.chat_tg_id)
+        _ = await self.session.execute(stmt)
+        exist_user: UserChat = _.scalars().first()
+        if exist_user is not None:
+            exist_user.isAdmin = user.isAdmin
+            await self.session.commit()
+        else:
+            self.session.add(user)
+            await self.session.commit()
+
+    async def update_or_insert_all(self, users: list[UserChat]):
+        for user in users:
+            await self.update_or_insert(user)
 
     async def add(self, user: UserChat):
         try:
@@ -61,3 +92,43 @@ class UserRepo(SQLAlchemyRepo):
             logger.error(msg_err)
             await self.session.rollback()
             raise
+
+    async def rating_increment(self, user_id, chat_id):
+        stmt = select(UserChat).where(UserChat.user_tg_id == user_id).where(UserChat.chat_tg_id == chat_id)
+        user: UserChat = (await self.session.execute(stmt)).scalars().first()
+        if user:
+            current_num_warnings = user.num_warnings
+            new_rating = current_num_warnings + 1
+            user.num_warnings = new_rating
+            try:
+                # self.session.add(chat)
+                await self.session.commit()
+                return user
+            except SQLAlchemyError:
+                msg_err = "Error update rating user with id:{%s} in chat with id:{%s})"
+                logger.error(msg_err)
+                await self.session.rollback()
+                raise
+        else:
+            user = UserChat(user_tg_id=user_id, chat_tg_id=chat_id)
+            await self.add(user)
+            return user
+
+    async def rating_reset(self, user_id, chat_id):
+        stmt = select(UserChat).where(UserChat.user_tg_id == user_id).where(UserChat.chat_tg_id == chat_id)
+        user: UserChat = (await self.session.execute(stmt)).scalars().first()
+        if user:
+            user.num_warnings = 0
+            try:
+                # self.session.add(chat)
+                await self.session.commit()
+                return user
+            except SQLAlchemyError:
+                msg_err = "Error update rating user with id:{%s} in chat with id:{%s})"
+                logger.error(msg_err)
+                await self.session.rollback()
+                raise
+        else:
+            user = UserChat(user_tg_id=user_id, chat_tg_id=chat_id)
+            await self.add(user)
+            return user

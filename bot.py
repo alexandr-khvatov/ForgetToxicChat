@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from config.config import config
-from handlers import admin_handlers, moderator_handlers, update_event_admins_handlers, admin_bot_setup_handlers, \
-    admin_add_badword_handlers, admin_show_badword_handlers, group_join
+from handlers.moderator import moderator_handlers
+from handlers.service_events import group_join, update_event_admins_handlers
+from handlers.admin import admin_show_badword_handlers, admin_bot_setup_handlers, admin_add_badword_handlers, \
+    admin_chat_manage_cmd_handlers
 from keyboards.main_menu import set_main_menu
 from middleware.db import DbSessionMiddleware
 
@@ -38,15 +40,18 @@ async def main():
 
     # Register middlewares
     dp.message.outer_middleware(DbSessionMiddleware(db_pool))
+    dp.edited_message.outer_middleware(DbSessionMiddleware(db_pool))
     dp.message.middleware(DbSessionMiddleware(db_pool))
+    dp.edited_message.middleware(DbSessionMiddleware(db_pool))
     dp.callback_query.middleware(DbSessionMiddleware(db_pool))
     dp.chat_member.middleware(DbSessionMiddleware(db_pool))
+    dp.my_chat_member.middleware(DbSessionMiddleware(db_pool))
 
     # Register handlers
     dp.include_router(admin_show_badword_handlers.router)
     dp.include_router(admin_add_badword_handlers.router)
     dp.include_router(admin_bot_setup_handlers.router)
-    dp.include_router(admin_handlers.router)
+    dp.include_router(admin_chat_manage_cmd_handlers.router)
     dp.include_router(group_join.router)
     dp.include_router(update_event_admins_handlers.router)
     dp.include_router(moderator_handlers.router)
