@@ -3,13 +3,15 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
+from before_start import fetch_admins
 from config.config import config
-from handlers.moderator import moderator_handlers
-from handlers.service_events import group_join, update_event_admins_handlers
+from db.repository.user_repo import UserRepo
 from handlers.admin import admin_show_badword_handlers, admin_bot_setup_handlers, admin_add_badword_handlers, \
     admin_chat_manage_cmd_handlers
+from handlers.moderator import moderator_handlers
+from handlers.service_events import group_join, update_event_admins_handlers
 from keyboards.main_menu import set_main_menu
 from middleware.db import DbSessionMiddleware
 
@@ -22,19 +24,20 @@ async def main():
         format=u'%(filename)s:%(lineno)d #%(levelname)-8s '
                u'[%(asctime)s] - %(name)s - %(message)s')
     logger.info('Starting bot')
-
     # Creating DB engine for PostgreSQL
     engine = create_async_engine(config.db.build_connection_str(), future=True, echo=True)
-
     # Creating DB connections pool
     db_pool = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
+    async with db_pool() as session:
+        ur = UserRepo(session)
     # Define bot, dispatcher and include routers to dispatcher
     bot: Bot = Bot(
         token=config.tg_bot.token,
         parse_mode='HTML')
     dp: Dispatcher = Dispatcher()
 
+
+    await fetch_admins(user_repo=ur, bot=bot)
     # Setting up the main menu of the bot
     await set_main_menu(bot)
 

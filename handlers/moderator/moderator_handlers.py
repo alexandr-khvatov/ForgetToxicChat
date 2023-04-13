@@ -32,11 +32,10 @@ async def process_moderator(message: Message, model: BertToxicityClassifier, cha
 
     # send debug message
     msg = f'''
-    confidence: {confidence:.2f},
-    probs: {list(map(lambda x: format(x, '.2f'), probs))},
+    probs: {list(map(lambda x: format(x, '.2f'), probs))}\n
     label: {predicted_class} = {label}
     '''
-    await message.answer(text=msg)
+    del_msg = await message.answer(text=msg)
     # send debug message
 
     if predicted_class == 1:
@@ -47,6 +46,9 @@ async def process_moderator(message: Message, model: BertToxicityClassifier, cha
             user_repo=user_repo,
             bot=bot)
 
+    # clear debug message
+    await asyncio.sleep(5)
+    await del_msg.delete()
 
 
 # check the message is not from the group
@@ -59,13 +61,7 @@ def check_the_message_is_not_from_the_group(message: Message) -> bool:
 async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat, user_repo: UserRepo, bot: Bot):
     mode = chat_settings.mode
     if mode == Mode.remove.name:
-        logger.debug("Mode: {%s}", Mode.remove.name)
-        delete_msg = await message.reply(text='Сообщение удалено')
         await message.delete()
-        # debug
-        await asyncio.sleep(10)
-        await delete_msg.delete()
-        # debug
         return
 
     limit = chat_settings.num_warnings
@@ -85,7 +81,6 @@ async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat,
                 str_forever = f"""<i>{username}  переведён в режим «только чтение» навсегда </i>"""
                 str_temporary = "<i>{username} переведён в режим «только чтение» до {time} (время серверное)</i>"
                 permissions = types.ChatPermissions()
-
                 try:
                     await bot.restrict_chat_member(
                         chat_id=message.chat.id,
@@ -102,7 +97,6 @@ async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat,
                         await user_repo.add(
                             UserChat(chat_tg_id=message.chat.id, user_tg_id=message.from_user.id,
                                      isAdmin=True))
-
                 if restriction_period == 0:
                     await message.reply(str_forever)
                 else:

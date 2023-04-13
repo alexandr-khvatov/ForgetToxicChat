@@ -14,6 +14,7 @@ from db.repository.user_repo import UserRepo
 from filters.chat_type import ChatTypeFilter
 from filters.is_admin import IsChatAdmin
 from keyboards.keyboard_bot_setup import make_kb_bot_settings
+from lexicon.lexicon_ru import LEXICON_COMMANDS
 
 restriction_time_regex = re.compile(r'(\b[1-9][0-9]*)([mhd]\b)')
 
@@ -226,6 +227,19 @@ async def process_ping_command(message: Message):
     chat_id = message.chat.id
     ping_msg = f'Пользователь id : <b>{user_id}</b>\nЧат id: <b>{chat_id}</b>'
     await message.answer(text=ping_msg, parse_mode='HTML')
+
+
+@router.message(
+    Command(commands=['help']),
+    # ChatTypeFilter(chat_type=["group", "supergroup"]),
+    # IsChatAdmin()
+)
+async def process_help_command(message: Message):
+    cmd = ['<b>Список команд бота\n</b>']
+    for key, value in LEXICON_COMMANDS.items():
+        cmd.append(f'{key} - {value}')
+    help_msg = '\n'.join(cmd)
+    await message.answer(text=help_msg, parse_mode='HTML')
 
 
 @router.message(

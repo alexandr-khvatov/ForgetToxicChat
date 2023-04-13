@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 
 class UserRepo(SQLAlchemyRepo):
 
+    async def get_all_chat_when_bot_admin(self, user_id):
+        stmt = select(UserChat.chat_tg_id) \
+            .where(UserChat.user_tg_id == user_id) \
+            .where(UserChat.isAdmin == True)
+        _ = await self.session.execute(stmt)
+        return _.scalars().all()
+
     async def find_user(self, user_id, chat_id):
         stmt = select(UserChat) \
             .where(UserChat.user_tg_id == user_id) \
