@@ -1,4 +1,6 @@
-from sqlalchemy import BigInteger
+import datetime
+
+from sqlalchemy import BigInteger, func, DateTime
 from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -13,3 +15,4 @@ class UserChat(Base):
     chat_tg_id = Column(BigInteger, primary_key=True, index=True)
     num_warnings = Column(Integer, default=0)
     isAdmin = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)

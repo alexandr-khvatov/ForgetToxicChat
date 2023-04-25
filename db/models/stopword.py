@@ -1,3 +1,5 @@
+import datetime
+
 from sqlalchemy import BigInteger, func
 from sqlalchemy import Column
 from sqlalchemy import VARCHAR
@@ -11,4 +13,4 @@ class StopWord(Base):
 
     chat_tg_id = Column(BigInteger, primary_key=True, index=True)
     stop_word = Column(VARCHAR, primary_key=True, index=True)
-    created_at = Column(DateTime(timezone=True), primary_key=True, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)

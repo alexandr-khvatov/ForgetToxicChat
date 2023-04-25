@@ -47,6 +47,7 @@ class UserRepo(SQLAlchemyRepo):
                 UserChat.chat_tg_id == chat_id,
                 UserChat.isAdmin == True, ))
         res = (await self.session.execute(stmt)).first()
+        await self.session.close()
         return res is not None
 
     async def update_or_insert(self, user: UserChat):

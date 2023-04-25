@@ -1,4 +1,6 @@
-from sqlalchemy import BigInteger
+import datetime
+
+from sqlalchemy import BigInteger, DateTime, func
 from sqlalchemy import Column
 from sqlalchemy import SmallInteger
 from sqlalchemy import VARCHAR
@@ -14,3 +16,4 @@ class Chat(Base):
     mode = Column(VARCHAR, default=Mode.remove.name)
     mute_time = Column(SmallInteger, default=300)
     num_warnings = Column(SmallInteger, default=5)
+    created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)

@@ -1,9 +1,10 @@
 import asyncio
 import logging
+from typing import AsyncGenerator
 
 from aiogram import Bot, Dispatcher
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 
 from before_start import fetch_admins
 from config.config import config
@@ -12,11 +13,16 @@ from handlers.admin import admin_show_badword_handlers, admin_bot_setup_handlers
     admin_chat_manage_cmd_handlers
 from handlers.moderator import moderator_handlers
 from handlers.service_events import group_join, update_event_admins_handlers
+from httpclient.http_client import HttpClient
 from keyboards.main_menu import set_main_menu
 from middleware.db import DbSessionMiddleware
+from middleware.http_client import HttpClientMiddleware
 
 logger = logging.getLogger(__name__)
 
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session_maker() as session:
+        yield session
 
 async def main():
     logging.basicConfig(
@@ -27,7 +33,7 @@ async def main():
     # Creating DB engine for PostgreSQL
     engine = create_async_engine(config.db.build_connection_str(), future=True, echo=True)
     # Creating DB connections pool
-    db_pool = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    db_pool = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with db_pool() as session:
         ur = UserRepo(session)
     # Define bot, dispatcher and include routers to dispatcher
@@ -36,19 +42,22 @@ async def main():
         parse_mode='HTML')
     dp: Dispatcher = Dispatcher()
 
-
     await fetch_admins(user_repo=ur, bot=bot)
     # Setting up the main menu of the bot
     await set_main_menu(bot)
+    httpClient = HttpClient(base_url=config.tg_bot.toxicity_service_url)
+    httpClientMiddleware = HttpClientMiddleware(httpclient=httpClient)
 
+    dbSessionMiddleware = DbSessionMiddleware(db_pool)
     # Register middlewares
-    dp.message.outer_middleware(DbSessionMiddleware(db_pool))
-    dp.edited_message.outer_middleware(DbSessionMiddleware(db_pool))
-    dp.message.middleware(DbSessionMiddleware(db_pool))
-    dp.edited_message.middleware(DbSessionMiddleware(db_pool))
-    dp.callback_query.middleware(DbSessionMiddleware(db_pool))
-    dp.chat_member.middleware(DbSessionMiddleware(db_pool))
-    dp.my_chat_member.middleware(DbSessionMiddleware(db_pool))
+    dp.message.outer_middleware(dbSessionMiddleware)
+    dp.edited_message.outer_middleware(dbSessionMiddleware)
+    dp.message.middleware(dbSessionMiddleware)
+    dp.message.middleware(httpClientMiddleware)
+    dp.edited_message.middleware(dbSessionMiddleware)
+    dp.callback_query.middleware(dbSessionMiddleware)
+    dp.chat_member.middleware(dbSessionMiddleware)
+    dp.my_chat_member.middleware(dbSessionMiddleware)
 
     # Register handlers
     dp.include_router(admin_show_badword_handlers.router)

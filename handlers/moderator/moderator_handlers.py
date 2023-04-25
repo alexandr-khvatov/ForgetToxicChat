@@ -1,10 +1,12 @@
 import asyncio
+import datetime
 import logging
 from datetime import timedelta
 
 from aiogram import Router, Bot, types, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
+from aiohttp import ServerDisconnectedError
 
 from config.config import config
 from db.models.chat import Chat
@@ -14,7 +16,7 @@ from db.repository.chat_repo import ChatRepo
 from db.repository.user_repo import UserRepo
 from filters.chat_type import ChatTypeFilter
 from filters.is_admin import IsChatAdmin
-from services.toxicity.BertToxicityClassifier import BertToxicityClassifier
+from httpclient.http_client import HttpClient
 
 router: Router = Router()
 
@@ -22,23 +24,30 @@ logger = logging.getLogger(__name__)
 
 
 @router.message(ChatTypeFilter(chat_type=["group", "supergroup"]), F.text, ~IsChatAdmin())
-async def process_moderator(message: Message, model: BertToxicityClassifier, chat_repo: ChatRepo, user_repo: UserRepo,
+async def process_moderator(message: Message, httpclient: HttpClient, chat_repo: ChatRepo, user_repo: UserRepo,
                             bot: Bot):
+    await _process_moderator(message, httpclient, chat_repo, user_repo, bot)
+
+
+@router.edited_message(ChatTypeFilter(chat_type=["group", "supergroup"]), F.text, ~IsChatAdmin())
+async def process_moderator(message: Message, httpclient: HttpClient, chat_repo: ChatRepo, user_repo: UserRepo,
+                            bot: Bot):
+    await _process_moderator(message, httpclient, chat_repo, user_repo, bot)
+
+
+async def _process_moderator(message: Message, httpclient: HttpClient, chat_repo: ChatRepo, user_repo: UserRepo,
+                             bot: Bot):
     user_id = message.from_user.id
     chat_id = message.chat.id
     chat_settings: Chat = await chat_repo.find_chat_settings(chat_id=chat_id)
     user: UserChat = await user_repo.find_user(user_id=user_id, chat_id=chat_id)
-    confidence, probs, predicted_class, label = model.predict(message.text)
 
-    # send debug message
-    msg = f'''
-    probs: {list(map(lambda x: format(x, '.2f'), probs))}\n
-    label: {predicted_class} = {label}
-    '''
-    del_msg = await message.answer(text=msg)
-    # send debug message
+    start_time = datetime.datetime.now()
+    msg_sentiment = await check_toxicity(httpclient, message)
+    end_time = datetime.datetime.now()
+    latency = (end_time - start_time).total_seconds() * 1000
 
-    if predicted_class == 1:
+    if msg_sentiment['sentiment'] == 1:
         await handle_toxicity(
             message=message,
             user=user,
@@ -46,16 +55,28 @@ async def process_moderator(message: Message, model: BertToxicityClassifier, cha
             user_repo=user_repo,
             bot=bot)
 
+    # send debug message
+    msg = f'''
+        <b>
+        probs: {list(map(lambda x: format(x, '.2f'), msg_sentiment['probabilities']))}\n
+        label: {msg_sentiment['sentiment']}
+        latency: {latency:.3f} ms
+        </b>
+        '''
+    del_msg = await message.answer(text=msg, parse_mode='HTML')
+    # send debug message
+
     # clear debug message
     await asyncio.sleep(5)
     await del_msg.delete()
 
 
-# check the message is not from the group
-def check_the_message_is_not_from_the_group(message: Message) -> bool:
-    if message.chat.type != 'group' and message.chat.type != 'supergroup':
-        return True
-    return False
+async def check_toxicity(httpclient, message):
+    try:
+        result = await httpclient.post(url='/predict', json={'text': message.text})
+    except ServerDisconnectedError as ex:
+        result = await httpclient.post(url='/predict', json={'text': message.text})
+    return result
 
 
 async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat, user_repo: UserRepo, bot: Bot):
@@ -130,28 +151,3 @@ async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat,
         new_rating = rating + 1
         await message.answer(text=f'Вы получили предупреждение {new_rating}/{limit}', parse_mode='HTML')
         await user_repo.rating_increment(user_id=message.from_user.id, chat_id=message.chat.id)
-
-
-@router.edited_message(ChatTypeFilter(chat_type=["group", "supergroup"]), F.text, ~IsChatAdmin())
-async def process_moderator(message: Message, model: BertToxicityClassifier, chat_repo: ChatRepo, user_repo: UserRepo,
-                            bot: Bot):
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-    chat_settings: Chat = await chat_repo.find_chat_settings(chat_id=chat_id)
-    user: UserChat = await user_repo.find_user(user_id=user_id, chat_id=chat_id)
-    confidence, probs, predicted_class, label = model.predict(message.text)
-    if predicted_class == 1:
-        await handle_toxicity(
-            message=message,
-            user=user,
-            chat_settings=chat_settings,
-            user_repo=user_repo,
-            bot=bot)
-        # await message.delete()
-    # send debug message
-    msg = f'''
-    confidence: {confidence:.2f},
-    probs: {list(map(lambda x: format(x, '.2f'), probs))},
-    label: {predicted_class} = {label}
-    '''
-    await message.answer(text=msg)

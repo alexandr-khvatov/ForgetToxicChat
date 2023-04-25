@@ -27,4 +27,7 @@ class DbSessionMiddleware(BaseMiddleware):
             data['user_repo'] = UserRepo(session)
             data['chat_repo'] = ChatRepo(session)
             data['sw_repo'] = StopWordRepo(session)
-            return await handler(event, data)
+            try:
+                return await handler(event, data)
+            finally:
+                await session.close()

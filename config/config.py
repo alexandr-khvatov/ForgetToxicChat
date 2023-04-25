@@ -52,6 +52,7 @@ class TgBot:
     model_path: str
     path_tokenizer: str
     group_reports: int  # todo: удалить или
+    toxicity_service_url: str
 
 
 @dataclass
@@ -71,13 +72,14 @@ config = Config(
         remove_joins=True,
         group_reports=-807049020,
         model_path=env('MODEL_PATH'),
-        path_tokenizer=env('PATH_TOKENIZER')
+        path_tokenizer=env('PATH_TOKENIZER'),
+        toxicity_service_url='http://localhost:5555'
     ),
     db=DatabaseConfig(
         database=env('POSTGRES_DATABASE'),
         db_host=env('POSTGRES_HOST'),
         db_port=env('POSTGRES_PORT'),
         db_user=env('POSTGRES_USER'),
-        db_password=env('POSTGRES_PASSWORD')
+        db_password=env('POSTGRES_PASSWORD'),
     )
 )
