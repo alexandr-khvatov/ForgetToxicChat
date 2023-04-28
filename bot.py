@@ -1,28 +1,24 @@
 import asyncio
 import logging
-from typing import AsyncGenerator
 
 from aiogram import Bot, Dispatcher
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
 from sqlalchemy.orm import sessionmaker
 
 from before_start import fetch_admins
-from config.config import config
-from db.repository.user_repo import UserRepo
-from handlers.admin import admin_show_badword_handlers, admin_bot_setup_handlers, admin_add_badword_handlers, \
-    admin_chat_manage_cmd_handlers
-from handlers.moderator import moderator_handlers
-from handlers.service_events import group_join, update_event_admins_handlers
-from httpclient.http_client import HttpClient
-from keyboards.main_menu import set_main_menu
-from middleware.db import DbSessionMiddleware
-from middleware.http_client import HttpClientMiddleware
+from src.config.config import config
+from src.db.repository.user_repo import UserRepo
+from src.handlers.admin import admin_bot_setup_handlers, admin_add_badword_handlers
+from src.handlers.admin import admin_chat_manage_cmd_handlers, admin_show_badword_handlers
+from src.handlers.moderator import moderator_handlers
+from src.handlers.service_events import update_event_admins_handlers, group_join
+from src.httpclient.http_client import HttpClient
+from src.keyboards.main_menu import set_main_menu
+from src.middleware.db_md import DbSessionMiddleware
+from src.middleware.http_client import HttpClientMiddleware
 
 logger = logging.getLogger(__name__)
 
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session_maker() as session:
-        yield session
 
 async def main():
     logging.basicConfig(
@@ -31,7 +27,7 @@ async def main():
                u'[%(asctime)s] - %(name)s - %(message)s')
     logger.info('Starting bot')
     # Creating DB engine for PostgreSQL
-    engine = create_async_engine(config.db.build_connection_str(), future=True, echo=True)
+    engine: AsyncEngine = create_async_engine(config.db.build_connection_str(), future=True, echo=True)
     # Creating DB connections pool
     db_pool = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with db_pool() as session:
@@ -51,9 +47,9 @@ async def main():
     dbSessionMiddleware = DbSessionMiddleware(db_pool)
     # Register middlewares
     dp.message.outer_middleware(dbSessionMiddleware)
-    dp.edited_message.outer_middleware(dbSessionMiddleware)
     dp.message.middleware(dbSessionMiddleware)
     dp.message.middleware(httpClientMiddleware)
+    dp.edited_message.outer_middleware(dbSessionMiddleware)
     dp.edited_message.middleware(dbSessionMiddleware)
     dp.callback_query.middleware(dbSessionMiddleware)
     dp.chat_member.middleware(dbSessionMiddleware)
