@@ -85,7 +85,7 @@ async def main():
             # Setting webhook
             await bot.set_webhook(
                 url=config.tg_bot.webhook_domain + config.tg_bot.webhook_path,
-                certificate=open(config.tg_bot.ssl, 'r'),
+                # certificate=open(config.tg_bot.ssl, 'r'),
                 drop_pending_updates=True,
                 allowed_updates=dp.resolve_used_update_types()
 
