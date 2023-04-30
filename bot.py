@@ -2,6 +2,8 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler
+from aiohttp import web
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
 from sqlalchemy.orm import sessionmaker
 
@@ -67,9 +69,37 @@ async def main():
 
     # Start polling
 
+    # try:
+    #     await bot.delete_webhook(drop_pending_updates=True)
+    #     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    # finally:
+    #     await bot.session.close()
+
     try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+        if not config.webhook_domain:
+            await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+        else:
+            # Suppress aiohttp access log completely
+            aiohttp_logger = logging.getLogger("aiohttp.access")
+            aiohttp_logger.setLevel(logging.CRITICAL)
+
+            # Setting webhook
+            await bot.set_webhook(
+                url=config.webhook_domain + config.webhook_path,
+                drop_pending_updates=True,
+                allowed_updates=dp.resolve_used_update_types()
+            )
+
+            # Creating an aiohttp application
+            app = web.Application()
+            SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=config.webhook_path)
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, host=config.app_host, port=config.app_port)
+            await site.start()
+
+            # Running it forever
+            await asyncio.Event().wait()
     finally:
         await bot.session.close()
 

@@ -53,6 +53,10 @@ class TgBot:
     path_tokenizer: str
     group_reports: int  # todo: удалить или
     toxicity_service_url: str
+    webhook_domain: str
+    webhook_path: str
+    app_host: str = "0.0.0.0"
+    app_port: str = 9000
 
 
 @dataclass
@@ -73,7 +77,9 @@ config = Config(
         group_reports=-807049020,
         model_path=env('MODEL_PATH'),
         path_tokenizer=env('PATH_TOKENIZER'),
-        toxicity_service_url='http://localhost:5051'
+        toxicity_service_url='http://localhost:5051',
+        webhook_domain=env('WEBHOOK_DOMAIN'),
+        webhook_path=env('WEBHOOK_PATH')
     ),
     db=DatabaseConfig(
         database=env('POSTGRES_DATABASE'),
