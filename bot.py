@@ -38,7 +38,8 @@ async def main():
         parse_mode='HTML')
     dp: Dispatcher = Dispatcher()
 
-    await fetch_admins(user_repo=ur, bot=bot)
+    # await fetch_admins(user_repo=ur, bot=bot)  РАСКОММЕНТИРОВАТЬ
+
     # Setting up the main menu of the bot
     await set_main_menu(bot)
     httpClient = HttpClient(base_url=config.tg_bot.toxicity_service_url)
@@ -65,8 +66,12 @@ async def main():
     dp.include_router(moderator_handlers.router)
 
     # Start polling
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    finally:
+        await bot.session.close()
 
 
 if __name__ == '__main__':

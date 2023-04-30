@@ -56,56 +56,6 @@ async def ban_user(callback: CallbackQuery, state: FSMContext, callback_data: Ba
     IsChatAdmin()
 )
 async def process_setup_command(message: Message, chat_repo: ChatRepo, bot: Bot):
-    # #####################
-    # # Создаем объекты инлайн-кнопок
-    # template_mode = 'Режим: {mode}'
-    # big_button_1: InlineKeyboardButton = InlineKeyboardButton(
-    #     text=template_mode.format(mode='Бан'),
-    #     callback_data='big_button_1_pressed')
-    #
-    # big_button_2: InlineKeyboardButton = InlineKeyboardButton(
-    #     text=template_mode.format(mode='Только чтение'),
-    #     callback_data='big_button_2_pressed')
-    #
-    # big_button_3: InlineKeyboardButton = InlineKeyboardButton(
-    #     text=template_mode.format(mode='Удаление'),
-    #     callback_data='big_button_2_pressed')
-    #
-    # show_warning_num_btn: InlineKeyboardButton = InlineKeyboardButton(
-    #     text="Предупреждений:{num}",
-    #     callback_data='show_warning_num_btn')
-    #
-    # warning_btn_plus: InlineKeyboardButton = InlineKeyboardButton(
-    #     text="+",
-    #     callback_data='warning_btn_plus')
-    #
-    # warning_btn_minus: InlineKeyboardButton = InlineKeyboardButton(
-    #     text="-",
-    #     callback_data='warning_btn_minus')
-    #
-    # show_mute_time_btn: InlineKeyboardButton = InlineKeyboardButton(
-    #     text="Время:{time}",
-    #     callback_data='show_mute_time_btn')
-    #
-    # mute_btn_plus: InlineKeyboardButton = InlineKeyboardButton(
-    #     text="+",
-    #     callback_data='mute_btn_plus')
-    #
-    # mute_btn_minus: InlineKeyboardButton = InlineKeyboardButton(
-    #     text="-",
-    #     callback_data='mute_btn_minus')
-    #
-    # # Создаем объект инлайн-клавиатуры
-    # keyboard: InlineKeyboardMarkup = InlineKeyboardMarkup(
-    #     inline_keyboard=[
-    #         [show_warning_num_btn, warning_btn_plus, warning_btn_minus],
-    #         [big_button_1],
-    #         [big_button_2],
-    #         [big_button_3],
-    #         [show_mute_time_btn, mute_btn_plus, mute_btn_minus]
-    #     ])
-    #
-    # #####################
     chat_id = message.chat.id
     chat_settings: Chat = await chat_repo.find_chat_settings(chat_id=chat_id)
     print(chat_settings)
@@ -196,8 +146,6 @@ async def process_name_sent(message: Message, state: FSMContext, sw_repo: StopWo
         await process_cancel_command_state(message, state)
 
 
-# Этот хэндлер будет срабатывать, если во время ввода имени
-# будет введено что-то некорректное
 @router.message(StateFilter(FSMFillBadWords.add_stop_word))
 async def warning_not_name(message: Message):
     await message.answer(text='То, что вы отправили не похоже на стоп-слово\n\n'
@@ -205,8 +153,6 @@ async def warning_not_name(message: Message):
                               'Для выхода: /cancel')
 
 
-# Этот хэндлер будет срабатывать на любые сообщения, кроме тех
-# для которых есть отдельные хэндлеры, вне состояний
 @router.message(StateFilter(default_state), ~ChatTypeFilter(chat_type=["group", "supergroup", "channel"]), )
 async def send_echo(message: Message):
-    await message.reply(text='Извините, моя твоя не понимать')
+    await message.reply(text='Модератор работает только в группе, добавьте меня в группу и назначте администратором')
