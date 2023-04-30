@@ -91,6 +91,9 @@ async def main():
 
             )
 
+            info = await bot.get_webhook_info()
+            logger.info(info)
+
             # Creating an aiohttp application
             app = web.Application()
             SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=config.tg_bot.webhook_path)
