@@ -93,10 +93,10 @@ async def main():
 
             # Creating an aiohttp application
             app = web.Application()
-            SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=config.webhook_path)
+            SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=config.tg_bot.webhook_path)
             runner = web.AppRunner(app)
             await runner.setup()
-            site = web.TCPSite(runner, host=config.app_host, port=config.app_port)
+            site = web.TCPSite(runner, host=config.tg_bot.app_host, port=config.tg_bot.app_port)
             await site.start()
 
             # Running it forever
