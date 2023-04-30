@@ -55,6 +55,7 @@ class TgBot:
     toxicity_service_url: str
     webhook_domain: str
     webhook_path: str
+    ssl: str
     app_host: str = "0.0.0.0"
     app_port: str = 9000
 
@@ -79,7 +80,8 @@ config = Config(
         path_tokenizer=env('PATH_TOKENIZER'),
         toxicity_service_url='http://localhost:5051',
         webhook_domain=env('WEBHOOK_DOMAIN'),
-        webhook_path=env('WEBHOOK_PATH')
+        webhook_path=env('WEBHOOK_PATH'),
+        ssl=env('SSL_SERT')
     ),
     db=DatabaseConfig(
         database=env('POSTGRES_DATABASE'),

@@ -7,7 +7,6 @@ from aiohttp import web
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
 from sqlalchemy.orm import sessionmaker
 
-from before_start import fetch_admins
 from src.config.config import config
 from src.db.repository.user_repo import UserRepo
 from src.handlers.admin import admin_bot_setup_handlers, admin_add_badword_handlers
@@ -76,7 +75,7 @@ async def main():
     #     await bot.session.close()
 
     try:
-        if not config.webhook_domain:
+        if not config.tg_bot.webhook_domain:
             await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
         else:
             # Suppress aiohttp access log completely
@@ -85,9 +84,11 @@ async def main():
 
             # Setting webhook
             await bot.set_webhook(
-                url=config.webhook_domain + config.webhook_path,
+                url=config.tg_bot.webhook_domain + config.tg_bot.webhook_path,
+                certificate=open(config.tg_bot.ssl, 'r'),
                 drop_pending_updates=True,
                 allowed_updates=dp.resolve_used_update_types()
+
             )
 
             # Creating an aiohttp application
