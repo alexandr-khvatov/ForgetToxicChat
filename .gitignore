@@ -1,3 +1,4 @@
+etc-ssl/
 .env-dev
 pgdata/
 venv/
