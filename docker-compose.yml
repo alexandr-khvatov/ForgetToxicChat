@@ -12,6 +12,7 @@ services:
         restart: unless-stopped
         volumes:
           - ".env-dev:/app/.env-dev"
+          - ./etc-ssl:/app/etc/ssl
 #        networks:
 #          - db_net
         depends_on:

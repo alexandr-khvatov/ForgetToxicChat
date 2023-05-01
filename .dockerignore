@@ -1,4 +1,8 @@
 pgdata
+etc-ssl
+ml_api
+nginx-reverse-proxy
+nginx-balancer
 venv
 .idea
 __pycache__

@@ -91,6 +91,11 @@ async def main():
 
             )
 
+            logger.info(f"Path to CERT {config.tg_bot.ssl}",)
+
+            # f = open('etc-ssl/hello.txt', 'r')
+            f = open(config.tg_bot.ssl, 'r')
+            logger.info(*f)
             info = await bot.get_webhook_info()
             logger.info(info)
 
