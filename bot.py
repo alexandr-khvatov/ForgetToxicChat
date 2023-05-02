@@ -90,13 +90,14 @@ async def main():
             webhook = await bot.get_webhook_info()
             logger.info(f"webhook before", webhook)
             await bot.delete_webhook()
-            await bot.set_webhook(
-                url=config.tg_bot.webhook_domain + config.tg_bot.webhook_path,
-                certificate=open(config.tg_bot.ssl, 'rb'),
-                # drop_pending_updates=True,
-                # allowed_updates=dp.resolve_used_update_types(),
-                # secret_token="Sasha-kak-dela"
-            )
+            with open(config.tg_bot.ssl, 'rb') as cert:
+                await bot.set_webhook(
+                    url=config.tg_bot.webhook_domain + config.tg_bot.webhook_path,
+                    certificate=BufferedInputFile(cert.read(), ""),
+                    drop_pending_updates=True,
+                    allowed_updates=dp.resolve_used_update_types(),
+                    secret_token="Sasha-kak-dela"
+                )
 
             logger.info(f"Path to CERT {config.tg_bot.ssl}")
             webhook = await bot.get_webhook_info()
