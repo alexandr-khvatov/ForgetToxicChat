@@ -90,7 +90,7 @@ async def main():
                 certificate=certificate,
                 drop_pending_updates=True,
                 allowed_updates=dp.resolve_used_update_types(),
-                secret_token="Sasha kak dela"
+                secret_token="Sasha-kak-dela"
             )
 
             logger.info(f"Path to CERT {config.tg_bot.ssl}", )
