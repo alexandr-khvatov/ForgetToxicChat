@@ -84,23 +84,26 @@ async def main():
             aiohttp_logger.setLevel(logging.CRITICAL)
 
             # Setting webhook
-            await bot.delete_webhook(drop_pending_updates=True)
-            certificate: InputFile = open(config.tg_bot.ssl, 'rb')
+            webhook = await bot.get_webhook_info()
+            logger.info(f"webhook before", webhook)
+            await bot.delete_webhook()
             await bot.set_webhook(
                 url=config.tg_bot.webhook_domain + config.tg_bot.webhook_path,
-                certificate=certificate,
+                certificate=open(config.tg_bot.ssl, 'rb'),
                 drop_pending_updates=True,
                 allowed_updates=dp.resolve_used_update_types(),
                 secret_token="Sasha-kak-dela"
             )
 
-            logger.info(f"Path to CERT {config.tg_bot.ssl}", )
+            logger.info(f"Path to CERT {config.tg_bot.ssl}")
+            webhook = await bot.get_webhook_info()
+            logger.info(f"webhook after", webhook)
 
-            # f = open('etc-ssl/hello.txt', 'r')
-            f = open(config.tg_bot.ssl, 'r')
-            logger.info(*f)
-            info = await bot.get_webhook_info()
-            logger.info(info)
+            # # f = open('etc-ssl/hello.txt', 'r')
+            # f = open(config.tg_bot.ssl, 'r')
+            # logger.info(*f)
+            # info = await bot.get_webhook_info()
+            # logger.info(info)
 
             # Creating an aiohttp application
             app = web.Application()
