@@ -84,6 +84,7 @@ async def main():
             aiohttp_logger.setLevel(logging.CRITICAL)
 
             # Setting webhook
+            await bot.delete_webhook(drop_pending_updates=True)
             certificate: InputFile = open(config.tg_bot.ssl, 'rb')
             await bot.set_webhook(
                 url=config.tg_bot.webhook_domain + config.tg_bot.webhook_path,
