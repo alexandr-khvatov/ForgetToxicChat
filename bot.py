@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
-from aiogram.types import InputFile
+from aiogram.types import BufferedInputFile
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 from aiohttp import web
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
@@ -82,7 +82,10 @@ async def main():
             # Suppress aiohttp access log completely
             aiohttp_logger = logging.getLogger("aiohttp.access")
             aiohttp_logger.setLevel(logging.CRITICAL)
-
+            # file = open(config.tg_bot.ssl, 'rb')
+            # file = open("./etc-ssl/hello.txt", 'r')
+            #
+            # bf = BufferedInputFile(file, filename="hello.txt")
             # Setting webhook
             webhook = await bot.get_webhook_info()
             logger.info(f"webhook before", webhook)
@@ -90,9 +93,9 @@ async def main():
             await bot.set_webhook(
                 url=config.tg_bot.webhook_domain + config.tg_bot.webhook_path,
                 certificate=open(config.tg_bot.ssl, 'rb'),
-                drop_pending_updates=True,
-                allowed_updates=dp.resolve_used_update_types(),
-                secret_token="Sasha-kak-dela"
+                # drop_pending_updates=True,
+                # allowed_updates=dp.resolve_used_update_types(),
+                # secret_token="Sasha-kak-dela"
             )
 
             logger.info(f"Path to CERT {config.tg_bot.ssl}")
