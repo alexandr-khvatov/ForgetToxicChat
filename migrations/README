@@ -1,1 +1,5 @@
 Generic single-database configuration with an async dbapi.
+
+# alembic revision --autogenerate -m 'alter table user_chat add total_warning'
+# alembic upgrade edb8bf3f7ca7
+# alembic upgrade head

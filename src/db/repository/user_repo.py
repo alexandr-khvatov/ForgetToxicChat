@@ -1,7 +1,7 @@
 import logging
 
 from pydantic import parse_obj_as
-from sqlalchemy import select, and_, exc, delete
+from sqlalchemy import select, and_, exc, delete, func
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.config.config import config
@@ -159,3 +159,58 @@ class UserRepo(SQLAlchemyRepo):
             user = UserChat(user_tg_id=user_id, chat_tg_id=chat_id)
             await self.add(user)
             return user
+
+    async def get_chat_warnings_active(self, chat_id):
+        logger.debug("get_chat_warnings_active")
+        stmt = select(func.sum(UserChat.num_warnings)).where(UserChat.chat_tg_id == chat_id)
+        _ = await self.session.execute(stmt)
+        num_warnings_activ = _.scalars().first()
+        logger.debug('chat with id: {%s}, num_warnings_activ: {%s}', chat_id, num_warnings_activ)
+        return num_warnings_activ if num_warnings_activ is not None else 0
+
+    async def get_chat_warnings_total(self, chat_id):
+        logger.debug("get_chat_warnings_total")
+        stmt = select(func.sum(UserChat.total_warnings)).where(UserChat.chat_tg_id == chat_id)
+        _ = await self.session.execute(stmt)
+        num_warnings_total = _.scalars().first()
+        logger.debug('chat with id: {%s}, num_warnings_total: {%s}', chat_id, num_warnings_total)
+        return num_warnings_total if num_warnings_total is not None else 0
+
+    async def get_chat_num_messages_for_user(self, user_id, chat_id):
+        logger.debug("get_chat_num_messages_for_user")
+        stmt = select(UserChat.message_counter).where(UserChat.user_tg_id == user_id).where(
+            UserChat.chat_tg_id == chat_id)
+        _ = await self.session.execute(stmt)
+        num_chat_messages_for_user = _.scalars().first()
+        logger.debug('user with id {} in chat with id: {%s} send num_chat_messages_for_user: {%s}', user_id, chat_id,
+                     num_chat_messages_for_user)
+        return num_chat_messages_for_user if num_chat_messages_for_user is not None else 0
+
+    async def get_chat_num_messages(self, chat_id):
+        logger.debug("get_chat_num_messages")
+        stmt = select(func.sum(UserChat.message_counter)).where(UserChat.chat_tg_id == chat_id)
+        _ = await self.session.execute(stmt)
+        num_chat_messages = _.scalars().first()
+        logger.debug('user sends in chat with id: {%s} total num_chat_messages: {%s}', chat_id,
+                     num_chat_messages)
+        return num_chat_messages if num_chat_messages is not None else 0
+
+    async def messages_increment(self, user_id, chat_id):
+        logger.debug("num_messages_increment")
+        stmt = select(UserChat).where(UserChat.user_tg_id == user_id).where(
+            UserChat.chat_tg_id == chat_id)
+        user_chat: UserChat = (await self.session.execute(stmt)).scalars().first()
+        if user_chat:
+            user_chat.message_counter = user_chat.message_counter + 1
+            try:
+                await self.session.commit()
+                return user_chat
+            except SQLAlchemyError:
+                msg_err = "Error num_messages_increment user_chat with id:{%s})"
+                logger.error(msg_err, chat_id)
+                await self.session.rollback()
+                raise
+        else:
+            user_chat = UserChat(user_tg_id=user_id, chat_tg_id=chat_id, message_counter=1)
+            await self.add(user_chat)
+            return user_chat

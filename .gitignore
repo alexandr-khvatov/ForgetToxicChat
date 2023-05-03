@@ -1,8 +1,10 @@
 etc-ssl/
 .env-dev
+.env-prod
 pgdata/
 venv/
 .idea/
 .mypy_cache/
 .vscode/
 __pycache__/
+

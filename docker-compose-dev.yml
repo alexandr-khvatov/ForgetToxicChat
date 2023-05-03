@@ -1,0 +1,81 @@
+version: "3.9"
+
+
+services:
+#    bot_app:
+#        build:
+#          context: .
+#        container_name: "${API_CONTAINER_NAME}"
+#        command: bash -c "alembic upgrade head && python bot.py"
+#        ports:
+#          - "${API_PORT}:${APP_PORT}"
+#        restart: unless-stopped
+#        volumes:
+#          - ".env-dev:/app/.env-dev"
+#          - ./etc-ssl:/app/etc/ssl
+##        networks:
+##          - db_net
+#        depends_on:
+#          - bot_db
+#          - nginx-balancer
+
+
+
+    bot_db:
+      container_name: bot_db
+      image: postgres:13.7
+      environment:
+        POSTGRES_DB: "postgres-db"
+        POSTGRES_USER: "test-user-bot"
+        POSTGRES_PASSWORD: "secret_password"
+        PGDATA: "/var/lib/postgresql/data/pgdata"
+      volumes:
+        - .:/var/lib/postgresql/data
+#      networks:
+#        - db_net
+      expose:
+        - ${POSTGRES_PORT}
+      ports:
+        - "${POSTGRES_PORT}:5432"
+      restart: unless-stopped
+
+
+#    nginx-reverse-proxy:
+#        image: nginx
+#        container_name: nginx-reverse-proxy
+#        restart: unless-stopped
+#        volumes:
+#          - ./nginx-reverse-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+#          - ./etc-ssl:/etc/ssl
+#        ports:
+#          - "${NGINX_PORT}:80"
+#          - "443:443"
+#        depends_on:
+#          - bot_app
+
+
+    bot_toxic_detect_ml_api:
+        build:
+          context: ./ml_api
+        image: toxic_ort_api
+        restart: unless-stopped
+        expose:
+          - "5051"
+        deploy:
+          replicas: 1
+
+
+    nginx-balancer:
+        image: nginx
+        container_name: nginx-balancer
+        restart: unless-stopped
+        volumes:
+          - ./nginx-balancer/nginx.conf:/etc/nginx/nginx.conf:ro
+        ports:
+          - "5051:4000"
+        depends_on:
+          - bot_toxic_detect_ml_api
+
+networks:
+  db_net:
+    driver: bridge

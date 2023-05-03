@@ -78,3 +78,30 @@ class ChatRepo(SQLAlchemyRepo):
             chat = Chat(chat_tg_id=chat_id)
             await self.add(chat)
             return chat
+
+    async def get_chat_num_messages(self, chat_id):
+        logger.debug("get_chat_num_messages")
+        stmt = select(Chat.message_counter).where(Chat.chat_tg_id == chat_id)
+        _ = await self.session.execute(stmt)
+        num_chat_messages = _.scalars().first()
+        logger.debug('chat with id: {%s}, num_chat_messages: {%s}', chat_id, num_chat_messages)
+        return num_chat_messages if num_chat_messages is not None else 0
+
+    async def messages_increment(self, chat_id):
+        logger.debug("num_messages_increment")
+        stmt = select(Chat).where(Chat.chat_tg_id == chat_id)
+        chat: Chat = (await self.session.execute(stmt)).scalars().first()
+        if chat:
+            chat.message_counter = chat.message_counter + 1
+            try:
+                await self.session.commit()
+                return chat
+            except SQLAlchemyError:
+                msg_err = "Error num_messages_increment chat with id:{%s})"
+                logger.error(msg_err, chat_id)
+                await self.session.rollback()
+                raise
+        else:
+            chat = Chat(chat_tg_id=chat_id)
+            await self.add(chat)
+            return chat

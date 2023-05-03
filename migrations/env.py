@@ -9,6 +9,10 @@ from alembic import context
 from src.config.config import config as cfg
 from src.db.models.base import Base
 
+from src.db.models.userchat import UserChat
+from src.db.models.chat import Chat
+from src.db.models.chat_message import ChatMessage
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

@@ -101,15 +101,7 @@ async def main():
 
             logger.info(f"Path to CERT {config.tg_bot.ssl}")
             webhook = await bot.get_webhook_info()
-            logger.info(f"webhook after", webhook)
-
-            # # f = open('etc-ssl/hello.txt', 'r')
-            # f = open(config.tg_bot.ssl, 'r')
-            # logger.info(*f)
-            # info = await bot.get_webhook_info()
-            # logger.info(info)
-
-            # Creating an aiohttp application
+            logger.info(f"webhook after", webhook.json())
             app = web.Application()
             SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=config.tg_bot.webhook_path)
             runner = web.AppRunner(app)

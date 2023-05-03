@@ -16,4 +16,5 @@ class Chat(Base):
     mode = Column(VARCHAR, default=Mode.remove.name)
     mute_time = Column(SmallInteger, default=300)
     num_warnings = Column(SmallInteger, default=5)
+    message_counter = Column(BigInteger, default=0)
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)

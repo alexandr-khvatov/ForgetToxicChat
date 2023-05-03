@@ -14,8 +14,6 @@ from src.db.models.chat import Chat
 from src.db.models.chat_message import ChatMessage
 from src.db.models.chat_mode_restriction import Mode
 from src.db.models.userchat import UserChat
-from src.db.repository.chat_repo import ChatRepo
-from src.db.repository.user_repo import UserRepo
 from src.filters.chat_type import ChatTypeFilter
 from src.filters.is_admin import IsChatAdmin
 from src.httpclient.http_client import HttpClient
@@ -26,17 +24,19 @@ logger = logging.getLogger(__name__)
 
 
 @router.message(ChatTypeFilter(chat_type=["group", "supergroup"]), F.text)
-async def process_moderator_new_msg(message: Message, httpclient: HttpClient, db: Database, chat_repo: ChatRepo,
-                                    user_repo: UserRepo,
-                                    bot: Bot):
-    await db.msg.add(ChatMessage(user_tg_id=message.from_user.id,
-                                 chat_tg_id=message.chat.id,
+async def process_moderator_new_msg(message: Message, httpclient: HttpClient, db: Database, bot: Bot):
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+
+    # keep statistics of sent messages
+    await db.user.messages_increment(user_id=user_id, chat_id=chat_id)
+    await db.msg.add(ChatMessage(user_tg_id=user_id,
+                                 chat_tg_id=chat_id,
                                  message_id=message.message_id,
                                  message_text=message.text,
                                  message_len=len(message.text.split())))
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-    is_admin = await check_is_admin(message=message, user_repo=user_repo)
+
+    is_admin = await check_is_admin(message=message, db=db)
     logger.debug('check_is_admin, result={%s} user_id=%s,\n chat_id=%s,\n message.chat.type=%s', is_admin, user_id,
                  chat_id,
                  message.chat.type, )
@@ -45,29 +45,23 @@ async def process_moderator_new_msg(message: Message, httpclient: HttpClient, db
         logger.debug('run _process_moderator user_id=%s,\n chat_id=%s,\n message.chat.type=%s', user_id,
                      chat_id,
                      message.chat.type, )
-        await _process_moderator(message=message, httpclient=httpclient, db=db, chat_repo=chat_repo,
-                                 user_repo=user_repo,
-                                 bot=bot)
+        await _process_moderator(message=message, httpclient=httpclient, db=db, bot=bot)
 
 
 @router.edited_message(ChatTypeFilter(chat_type=["group", "supergroup"]), F.text, ~IsChatAdmin())
-async def process_moderator_edit_msg(message: Message, httpclient: HttpClient, db: Database, chat_repo: ChatRepo,
-                                     user_repo: UserRepo,
-                                     bot: Bot):
-    await _process_moderator(message=message, httpclient=httpclient, db=db, chat_repo=chat_repo, user_repo=user_repo,
-                             bot=bot)
+async def process_moderator_edit_msg(message: Message, httpclient: HttpClient, db: Database, bot: Bot):
+    logger.debug(f"LOG: {httpclient._base_url}")
+    await _process_moderator(message=message, httpclient=httpclient, db=db, bot=bot)
 
 
-async def _process_moderator(message: Message, httpclient: HttpClient, db: Database, chat_repo: ChatRepo,
-                             user_repo: UserRepo,
-                             bot: Bot):
+async def _process_moderator(message: Message, httpclient: HttpClient, db: Database, bot: Bot):
     user_id = message.from_user.id
     chat_id = message.chat.id
     logger.debug('call _process_moderator user_id=%s,\n chat_id=%s,\n message.chat.type=%s,\n message.text=%s', user_id,
                  chat_id,
                  message.chat.type, message.text)
-    chat_settings: Chat = await chat_repo.find_chat_settings(chat_id=chat_id)
-    user: UserChat = await user_repo.find_user(user_id=user_id, chat_id=chat_id)
+    chat_settings: Chat = await db.chat.find_chat_settings(chat_id=chat_id)
+    user: UserChat = await db.user.find_user(user_id=user_id, chat_id=chat_id)
 
     start_time = datetime.datetime.now()
     msg_sentiment = await check_toxicity(httpclient, message)
@@ -79,7 +73,7 @@ async def _process_moderator(message: Message, httpclient: HttpClient, db: Datab
             message=message,
             user=user,
             chat_settings=chat_settings,
-            user_repo=user_repo,
+            db=db,
             bot=bot)
         await db.msg.mark_msg_as_toxic(user_id=user_id, chat_id=chat_id, msg_id=message.message_id)
 
@@ -103,14 +97,14 @@ async def check_toxicity(httpclient, message):
     try:
         result = await httpclient.post(url='/predict', json={'text': message.text})
         logger.debug('check_toxicity result:', result)
-    except ServerDisconnectedError as ex:
+    except ServerDisconnectedError:
         logger.error('toxicity service ServerDisconnectedError ')
         result = await httpclient.post(url='/predict', json={'text': message.text})
     logger.debug('check_toxicity result:', result)
     return result
 
 
-async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat, user_repo: UserRepo, bot: Bot):
+async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat, db: Database, bot: Bot):
     mode = chat_settings.mode
     if mode == Mode.remove.name:
         await message.delete()
@@ -147,7 +141,7 @@ async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat,
                                 f"В БД устаревшая информация(после выключения бота). Попытка огрничить права администратора с id:{message.from_user.id}")
                             CANT_RESTRICT_ADMIN_MSG = "Нельзя ограничить админа"
                             await message.reply(CANT_RESTRICT_ADMIN_MSG)
-                            await user_repo.add(
+                            await db.user.add(
                                 UserChat(chat_tg_id=message.chat.id, user_tg_id=message.from_user.id,
                                          isAdmin=True))
                     if restriction_period == 0:
@@ -177,17 +171,17 @@ async def handle_toxicity(message: Message, user: UserChat, chat_settings: Chat,
                     await message.reply(str_temporary.format(
                         username=username,
                     ), parse_mode="HTML")
-        await user_repo.rating_reset(user_id=message.from_user.id, chat_id=message.chat.id)
+        await db.user.rating_reset(user_id=message.from_user.id, chat_id=message.chat.id)
     else:
         new_rating = rating + 1
         await message.answer(text=f'Вы получили предупреждение {new_rating}/{limit}', parse_mode='HTML')
-        await user_repo.rating_increment(user_id=message.from_user.id, chat_id=message.chat.id)
+        await db.user.rating_increment(user_id=message.from_user.id, chat_id=message.chat.id)
 
 
-async def check_is_admin(message: types.Message, user_repo: UserRepo) -> bool:
+async def check_is_admin(message: types.Message, db: Database) -> bool:
     user_id = message.from_user.id
     chat_id = message.chat.id
-    isAdmin = await user_repo.is_admin(user_id=user_id, chat_id=chat_id)
+    isAdmin = await db.user.is_admin(user_id=user_id, chat_id=chat_id)
 
     # logger.debug(f"User with id:{user_id} is Admin for chat with chat_id:{chat_id}, result: {isAdmin}")
 

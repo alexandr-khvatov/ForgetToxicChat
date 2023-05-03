@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 #     expire_on_commit=False
 # )
 from src.db.repository.chat_msg_repo import ChatMessageRepo
+from src.db.repository.chat_repo import ChatRepo
+from src.db.repository.user_repo import UserRepo
 
 
 class Database:
@@ -19,23 +21,22 @@ class Database:
     can be used in the handlers or any others bot-side functions
     """
 
-    # user: UserRepo
-    # """ User repository """
-    # chat: ChatRepo
-    # """ Chat repository """
-
+    user: UserRepo
+    chat: ChatRepo
     msg: ChatMessageRepo
-    """ Chat repository """
 
-    session: AsyncSession
+    _session: AsyncSession
 
     # def __init__(
     #     self, session: AsyncSession, user: UserRepo = None, chat: ChatRepo = None
     # ):
     def __init__(
-            self, session: AsyncSession, msg: ChatMessageRepo = None
+            self, session: AsyncSession,
+            msg: ChatMessageRepo = None,
+            chat: ChatRepo = None,
+            user: UserRepo = None,
     ):
-
-        self.session = session
-        self.msg = msg or ChatMessageRepo(session)
-        # self.chat = chat or ChatRepo(session=session)
+        self._session = session
+        self.msg = msg or ChatMessageRepo(session=session)
+        self.chat = chat or ChatRepo(session=session)
+        self.user = user or UserRepo(session=session)

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import pprint
 import re
@@ -6,8 +7,9 @@ from datetime import timedelta
 from aiogram import Router, Bot, types, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, User as AiUser, Chat as AiChat
 
+from src.db.database import Database
 from src.db.models.chat import Chat
 from src.db.models.userchat import UserChat
 from src.db.repository.chat_repo import ChatRepo
@@ -76,7 +78,7 @@ async def process_ban_command(message: Message, bot: Bot):
     maybe_username = message.reply_to_message.from_user.username
     username = '@' + maybe_username if maybe_username else (message.reply_to_message.from_user.first_name or "")
     str_forever = f"""<i>Пользователь {username} забанен навсегда</i>"""
-    str_temporary = "<i>Пользователь {username} забанен до {time} (время серверное)</i>"
+    str_temporary = "<i>Пользователь {username} забанен</i>"
     ban_period = get_restriction_period(message.text)
     ban_end_date = message.date + timedelta(seconds=ban_period)
 
@@ -91,7 +93,7 @@ async def process_ban_command(message: Message, bot: Bot):
     else:
         await message.reply(str_temporary.format(
             username=username,
-            time=ban_end_date.strftime("%d.%m.%Y %H:%M")
+            # time=ban_end_date.strftime("%d.%m.%Y %H:%M")
         ))
 
 
@@ -219,9 +221,91 @@ async def process_mute_command(message: Message, user_repo: UserRepo, bot: Bot):
 
 
 @router.message(
+    Command(commands=['info', 'i']),
+    ChatTypeFilter(chat_type=["group", "supergroup"]),
+    IsChatAdmin()
+)
+async def process_info_command(message: Message, db: Database, bot: Bot):
+
+    if message.reply_to_message:
+        replay_user = message.reply_to_message.from_user
+        if bot.id == replay_user.id:
+            delete_stat_msg = await message.reply(text="(???___???)", parse_mode='HTML')
+            await asyncio.sleep(10)
+            await message.delete()
+            await delete_stat_msg.delete()
+            return
+        user_id = replay_user.id
+        chat_id = message.chat.id
+        user: UserChat = await db.user.find_user(user_id=user_id, chat_id=chat_id)
+        user_warnings_active = user.num_warnings
+        user_total_warnings = user.total_warnings
+        user_sent_messages = user.message_counter
+
+        username = get_username(replay_user)
+    else:
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        user: UserChat = await db.user.find_user(user_id=user_id, chat_id=chat_id)
+        user_warnings_active = user.num_warnings
+        user_total_warnings = user.total_warnings
+        user_sent_messages = user.message_counter
+        username = get_username(message.from_user)
+
+    user_info_stat_msg = f'''
+📌    <b>Пользователь</b>
+{username} [id : <b><code>{user_id}</code></b>]
+
+<b>Активных предупреждений:</b>
+⚠️  →  <b>{user_warnings_active}</b>
+
+<b>Предупреждений всего:</b>
+⚠️  →  <b>{user_total_warnings}</b>
+
+<b>Сообщений обработано:</b>
+📨   →  <b>{user_sent_messages}</b>'''
+    delete_stat_msg = await message.reply(text=user_info_stat_msg, parse_mode='HTML')
+    await asyncio.sleep(10)
+    await message.delete()
+    await delete_stat_msg.delete()
+
+
+@router.message(
+    Command(commands=['chatinfo', 'ci']),
+    ChatTypeFilter(chat_type=["group", "supergroup"]),
+    IsChatAdmin()
+)
+async def process_chatinfo_command(message: Message, db: Database):
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+
+    chat_warnings_active = await db.user.get_chat_warnings_active(chat_id=chat_id)
+    logger.debug(f'chat_warnings_active: {chat_warnings_active}')
+    chat_total_warnings = await db.user.get_chat_warnings_total(chat_id=chat_id)
+    logger.debug(f'chat_total_warnings: {chat_total_warnings}')
+    chat_sent_messages = await db.user.get_chat_num_messages(chat_id=chat_id)
+
+    chat_username = get_chat_username(message.chat)
+    chat_info_stat_msg = f'''
+📌   <b>Чат</b> 
+<b>{chat_username}</b>
+[id : <b><code>{chat_id}</code></b>]
+
+<b>Активных предупреждений:</b>
+⚠️  →  <b>{chat_warnings_active}</b>
+
+<b>Предупреждений всего:</b>
+⚠️  →  <b>{chat_total_warnings}</b>
+
+<b>Сообщений обработано:</b>
+📨   →  <b>{chat_sent_messages}</b>'''
+    await message.answer(text=chat_info_stat_msg, parse_mode='HTML')
+
+
+@router.message(
     Command(commands=['ping']),
-    # ChatTypeFilter(chat_type=["group", "supergroup"]),
-    # IsChatAdmin()
+    ChatTypeFilter(chat_type=["group", "supergroup"]),
+    IsChatAdmin()
 )
 async def process_ping_command(message: Message):
     user_id = message.from_user.id
@@ -232,8 +316,8 @@ async def process_ping_command(message: Message):
 
 @router.message(
     Command(commands=['help']),
-    # ChatTypeFilter(chat_type=["group", "supergroup"]),
-    # IsChatAdmin()
+    ChatTypeFilter(chat_type=["group", "supergroup"]),
+    IsChatAdmin()
 )
 async def process_help_command(message: Message):
     cmd = ['<b>Список команд бота\n</b>']
@@ -282,3 +366,15 @@ def get_restriction_period(text: str) -> int:
         time, modifier = match.groups()
         return int(time) * multipliers[modifier]
     return 0
+
+
+def get_username(user: AiUser) -> str:
+    maybe_username = user.username
+    username = '@' + maybe_username if maybe_username else (user.first_name or "")
+    return username
+
+
+def get_chat_username(chat: AiChat) -> str:
+    maybe_username = chat.title
+    username = maybe_username if maybe_username else ('@' + chat.username or chat.first_name or "")
+    return username

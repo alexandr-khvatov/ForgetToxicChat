@@ -15,9 +15,9 @@ class UserChat(Base):
     chat_tg_id = Column(BigInteger, primary_key=True, index=True)
     num_warnings = Column(Integer, default=0)
     total_warnings = Column(Integer, default=0)
+    message_counter = Column(BigInteger, default=0)
     isAdmin = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
 
 
-#  alembic revision --autogenerate -m 'alter table user_chat add total_warning'
-# alembic upgrade edb8bf3f7ca7
+
