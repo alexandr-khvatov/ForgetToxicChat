@@ -68,7 +68,7 @@ class Model:
 
 
 model = Model(
-    path_model='assets/model_onnx/torch-model.onnx',
+    path_model='assets/model_onnx/model_onnx.onnx',
     path_tokenizer='assets/tokenizer',
     threshold=cfg.threshold
 )

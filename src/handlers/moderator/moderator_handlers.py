@@ -85,12 +85,14 @@ async def _process_moderator(message: Message, httpclient: HttpClient, db: Datab
         latency: {latency:.3f} ms
         </b>
         '''
-    del_msg = await message.answer(text=msg, parse_mode='HTML')
+    logger.debug(msg)
+    # del_msg = await message.answer(text=msg, parse_mode='HTML')
+    # clear debug message
+    # await asyncio.sleep(5)
+    # await del_msg.delete()
+
     # send debug message
 
-    # clear debug message
-    await asyncio.sleep(5)
-    await del_msg.delete()
 
 
 async def check_toxicity(httpclient, message):
