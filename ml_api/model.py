@@ -39,7 +39,7 @@ class Model:
             '1': 'ТОКСИЧНЫЙ'
         }
         self.LABEL = LABEL
-        self.MAX_LEN = 16
+        self.MAX_LEN = 64
         self.threshold = threshold
 
     def predict(self, text):

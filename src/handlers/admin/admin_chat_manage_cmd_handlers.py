@@ -74,7 +74,15 @@ async def process_unban_command(message: Message, bot: Bot):
     F.reply_to_message,
     ChatTypeFilter(chat_type=["group", "supergroup"]),
     IsChatAdmin())
-async def process_ban_command(message: Message, bot: Bot):
+async def process_ban_command(message: Message, db: Database, bot: Bot):
+    CANT_RESTRICT_ADMIN_MSG = "Нельзя ограничить админа"
+    # if message.reply_to_message.from_user.id in admin_ids:
+    isAdmin = await db.user.is_admin(user_id=message.reply_to_message.from_user.id, chat_id=message.chat.id)
+    if isAdmin:
+        logger.debug("Попытка ограничить пользователя с правами администратора .Нельзя ограничить админа")
+        await message.reply(CANT_RESTRICT_ADMIN_MSG)
+        return
+
     maybe_username = message.reply_to_message.from_user.username
     username = '@' + maybe_username if maybe_username else (message.reply_to_message.from_user.first_name or "")
     str_forever = f"""<i>Пользователь {username} забанен навсегда</i>"""
@@ -167,14 +175,16 @@ async def process_unmute_command(message: Message, user_repo: UserRepo, bot: Bot
     ChatTypeFilter(chat_type=["group", "supergroup"]),
     IsChatAdmin()
 )
-async def process_mute_command(message: Message, user_repo: UserRepo, bot: Bot):
+async def process_mute_command(message: Message, db: Database, bot: Bot):
     logger.debug("start process cmd /mute, user with id: %s", message.from_user.id)
     chat_id = message.chat.id
-    admin_ids = await user_repo.find_admin_ids_by_chat_id(chat_id=chat_id)
-    logger.debug("find admins id for chat with id:{%s}, result:{%s} ", chat_id, admin_ids)
+    # admin_ids = await user_repo.find_admin_ids_by_chat_id(chat_id=chat_id)
+    # logger.debug("find admins id for chat with id:{%s}, result:{%s} ", chat_id, admin_ids)
 
     CANT_RESTRICT_ADMIN_MSG = "Нельзя ограничить админа"
-    if message.reply_to_message.from_user.id in admin_ids:
+    # if message.reply_to_message.from_user.id in admin_ids:
+    isAdmin = await db.user.is_admin(user_id=message.reply_to_message.from_user.id, chat_id=message.chat.id)
+    if isAdmin:
         logger.debug("Попытка ограничить пользователя с правами администратора .Нельзя ограничить админа")
         await message.reply(CANT_RESTRICT_ADMIN_MSG)
         return
@@ -208,7 +218,7 @@ async def process_mute_command(message: Message, user_repo: UserRepo, bot: Bot):
             f"В БД устаревшая информация(после выключения бота). Попытка огрничить права администратора с id:{message.reply_to_message.from_user.id}")
         if e.message.endswith('user is an administrator of the chat'):
             await message.reply(CANT_RESTRICT_ADMIN_MSG)
-            await user_repo.add(
+            await db.user.add(
                 UserChat(chat_tg_id=message.chat.id, user_tg_id=message.reply_to_message.from_user.id, isAdmin=True))
 
     if restriction_period == 0:
@@ -226,7 +236,6 @@ async def process_mute_command(message: Message, user_repo: UserRepo, bot: Bot):
     IsChatAdmin()
 )
 async def process_info_command(message: Message, db: Database, bot: Bot):
-
     if message.reply_to_message:
         replay_user = message.reply_to_message.from_user
         if bot.id == replay_user.id:
@@ -330,7 +339,7 @@ async def process_help_command(message: Message):
 @router.message(
     Command(commands=['admins_update', 'au']),
     ChatTypeFilter(chat_type=["group", "supergroup"]),
-    # IsChatAdmin()
+    IsChatAdmin()
 )
 async def process_update_admins_command(message: Message, user_repo: UserRepo):
     logger.debug(f"Start process cmd ( '/admins_update' or '/au' ), user with id:{message.from_user.id}")
@@ -340,7 +349,7 @@ async def process_update_admins_command(message: Message, user_repo: UserRepo):
     new_admins: list[UserChat] = list(
         map(lambda a: UserChat(user_tg_id=a.user.id, chat_tg_id=chat_id, isAdmin=True), admins))
     new_admin_ids = list(map(lambda x: x.user_tg_id, new_admins))
-    #
+
     old_admins: list[UserChat] = await user_repo.find_admins_by_chat_id(chat_id=chat_id)
 
     for old_admin in old_admins:
@@ -348,10 +357,11 @@ async def process_update_admins_command(message: Message, user_repo: UserRepo):
             print(f'user id: {old_admin.user_tg_id}, isAdmin: {old_admin.isAdmin}')
             new_admins.append(UserChat(user_tg_id=old_admin.user_tg_id, chat_tg_id=old_admin.chat_tg_id, isAdmin=False))
 
-    # old_admin_ids = list(filter(lambda a: in ))
     for a in new_admins:
         print(f'user id: {a.user_tg_id}, isAdmin: {a.isAdmin}')
     await user_repo.update_or_insert_all(new_admins)
+
+    await message.delete()
 
 
 def get_restriction_period(text: str) -> int:

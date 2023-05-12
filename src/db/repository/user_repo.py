@@ -49,8 +49,8 @@ class UserRepo(SQLAlchemyRepo):
         _ = await self.session.execute(stmt)
         return _.scalars().all()
 
-    async def is_admin(self, user_id: int, chat_id: int):
-        logger.debug("is_admin")
+    async def is_admin(self, user_id: int, chat_id: int) -> bool:
+        logger.debug("call is_admin")
         stmt = select(UserChat.user_tg_id).filter(
             and_(
                 UserChat.user_tg_id == user_id,
