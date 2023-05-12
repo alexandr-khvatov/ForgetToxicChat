@@ -7,4 +7,4 @@ venv/
 .mypy_cache/
 .vscode/
 __pycache__/
-ml_api/assets/model_onnx/
+ml_api/assets/model_onnx/model_onnx.onnx
