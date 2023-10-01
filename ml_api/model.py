@@ -14,9 +14,7 @@ def _create_onnx_session(
         provider: str = "CPUExecutionProvider"
 ) -> InferenceSession:
     options = SessionOptions()
-    # options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
     options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-    # options.intra_op_num_threads = 1
     session = InferenceSession(model_path, options, providers=[provider])
     session.disable_fallback()
     return session
@@ -32,13 +30,10 @@ class Model:
 
     def __init__(self, path_model, path_tokenizer, threshold):
         self.tokenizer = AutoTokenizer.from_pretrained(path_tokenizer)
-        session = _create_onnx_session(model_path=path_model, provider='CPUExecutionProvider')
+        session = _create_onnx_session(
+            model_path=path_model,
+            provider='CPUExecutionProvider')
         self.session = session
-        LABEL: dict[str, str] = {
-            '0': 'НЕЙТРАЛЬНЫЙ',
-            '1': 'ТОКСИЧНЫЙ'
-        }
-        self.LABEL = LABEL
         self.MAX_LEN = 64
         self.threshold = threshold
 
