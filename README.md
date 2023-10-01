@@ -1,5 +1,5 @@
 # ForgetToxicChat 
-###### Бот для модерации токсичных сообщений в Telegram чатах
+###### Bot for filtering and moderating toxic text messages in Russian in Telegram chats
 
 ### Requirements
 
@@ -20,7 +20,10 @@
 * nginx
 * Docker container 20.10.23
 
-Docker instructions:
+
+### Building
+
+###### Docker instructions:
 
 ```
 # Clone this repository
@@ -34,7 +37,7 @@ $ docker-compose --env-file .env.example -f .\docker-compose.yml up
 
 ```
 
-### Архитектура приложения
-###### Представлена в нотации С4
+### Application architecture
+###### Presented in C4 notation
 
 ![Architecture](./assets/ForgetToxicChat.svg "Test_task")
